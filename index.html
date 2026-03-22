@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Feedback Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .main-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 2px dashed #667eea;
+        }
+
+        .upload-box {
+            text-align: center;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .upload-box:hover {
+            background: #e8eaf6;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .upload-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .upload-box p {
+            color: #666;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info.success {
+            border-left: 4px solid #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .file-info.error {
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        select, input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        select:hover, input:hover {
+            border-color: #667eea;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        select:disabled {
+            background: #e8e8e8;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        #generateRatingsBtn, #analyzeBtn, #generateProfileBtn, #compareBtn, #statsBtn {
+            display: none !important;
+        }
+
+        .auto-note {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #17a2b8;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .status {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+            border-left: 4px solid;
+            font-weight: 600;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .profile-header h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .profile-header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .overview-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .overview-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #667eea;
+        }
+
+        .overview-card.strength {
+            border-top-color: #28a745;
+        }
+
+        .overview-card.weakness {
+            border-top-color: #dc3545;
+        }
+
+        .overview-card.neutral {
+            border-top-color: #ffc107;
+        }
+
+        .card-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .card-category {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .insights-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .insight-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 4px solid;
+        }
+
+        .insight-card.strength {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .insight-card.weakness {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .insight-card.improvement {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+
+        .insight-card h3 {
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .insight-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .insight-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .insight-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .insight-score {
+            display: inline-block;
+            background: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+
+        .insight-text {
+            color: #666;
+            font-size: 0.95em;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .recommendation-list {
+            list-style: none;
+        }
+
+        .recommendation-list li {
+            padding: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #666;
+        }
+
+        .recommendation-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: 700;
+            color: #28a745;
+        }
+
+        .weakness-list li:before {
+            content: "⚠";
+            color: #dc3545;
+        }
+
+        .improvement-list li:before {
+            content: "→";
+            color: #ffc107;
+        }
+
+        .charts-title {
+            font-size: 1.5em;
+            color: #333;
+            margin: 30px 0 20px 0;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-card h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.1em;
+            border-left: 4px solid #667eea;
+            padding-left: 12px;
+        }
+
+        .chart-canvas {
+            position: relative;
+            height: 300px;
+            margin-bottom: 15px;
+        }
+
+        .chart-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* RATINGS TABLE STYLES */
+        .ratings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .ratings-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+        }
+
+        .ratings-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ratings-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .ratings-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .question-cell {
+            font-weight: 600;
+            color: #333;
+            max-width: 300px;
+        }
+
+        .rating-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rating-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #667eea;
+            min-width: 40px;
+        }
+
+        .rating-bar {
+            flex: 1;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .rating-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .participation-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .participation-badge.low {
+            background: #dc3545;
+        }
+
+        .participation-badge.medium {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .participation-badge.high {
+            background: #28a745;
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .summary-item-value {
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .performance-gauge {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .gauge {
+            text-align: center;
+        }
+
+        .gauge-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .gauge-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: white;
+            position: relative;
+        }
+
+        .gauge-circle.excellent {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .gauge-circle.good {
+            background: linear-gradient(135deg, #17a2b8, #00d4ff);
+        }
+
+        .gauge-circle.average {
+            background: linear-gradient(135deg, #ffc107, #ff9800);
+        }
+
+        .gauge-circle.poor {
+            background: linear-gradient(135deg, #dc3545, #ff6b6b);
+        }
+
+        @media (max-width: 1024px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+
+            .insights-container {
+                grid-template-columns: 1fr;
+            }
+
+            .ratings-table {
+                font-size: 0.9em;
+            }
+
+            .ratings-table th,
+            .ratings-table td {
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .main-panel {
+                padding: 20px;
+            }
+
+            .controls-section {
+                grid-template-columns: 1fr;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .profile-header {
+                padding: 20px;
+            }
+
+            .profile-header h2 {
+                font-size: 1.5em;
+            }
+
+            .overview-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-box {
+                grid-template-columns: 1fr;
+            }
+
+            .question-cell {
+                max-width: 150px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .buttons, .tabs, .controls-section {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Faculty Feedback Analysis Dashboard</h1>
+            <p>Advanced Analysis & Comprehensive Faculty Insights</p>
+        </header>
+
+        <div class="main-panel">
+            <div class="status" id="statusMessage"></div>
+
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(event, 'upload')">📁 Upload</button>
+                <button class="tab-btn" onclick="switchTab(event, 'ratings')">📋 Faculty Ratings</button>
+                <button class="tab-btn" onclick="switchTab(event, 'analysis')">📈 Single Analysis</button>
+                <button class="tab-btn" onclick="switchTab(event, 'profile')">👤 Faculty Profile</button>
+                <button class="tab-btn" onclick="switchTab(event, 'compare')">⚖️ Compare Faculty</button>
+                <button class="tab-btn" onclick="switchTab(event, 'statistics')">📊 Statistics</button>
+            </div>
+
+            <!-- TAB 1: UPLOAD -->
+            <div id="upload" class="tab-content active">
+                <div class="upload-section">
+                    <div class="upload-box" id="uploadBox">
+                        <div class="upload-icon">📁</div>
+                        <h3>Upload Excel or CSV File</h3>
+                        <p>Click here or drag and drop your feedback file (XLSX, XLS, CSV)</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="file-info" id="fileInfo">
+                        <div class="file-name" id="fileName"></div>
+                        <div class="file-details" id="fileDetails"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: FACULTY RATINGS (NEW!) -->
+            <div id="ratings" class="tab-content">
+                <div class="controls-section">
+                    <div class="control-group">
+                        <label for="ratingsCourse">📚 Select Course</label>
+                        <select id="ratingsCourse">
+                            <option value="">-- All Courses --</option>
+                            <option value="B.Sc. (N) I Semester Sec-A">B.Sc. (N) I Semester Sec-A</option>
+                            <option value="B.Sc. (N) I Semester Sec-B">B.Sc. (N) I Semester Sec-B</option>
+                            <option value="B.Sc. (N) II Semester Sec-A">B.Sc. (N) II Semester Sec-A</option>
+                            <option value="B.Sc. (N) II Semester Sec-B">B.Sc. (N) II Semester Sec-B</option>
+                            <option value="B.Sc. (N) III Semester Sec-A">B.Sc. (N) III Semester Sec-A</option>
+                            <option value="B.Sc. (N) III Semester Sec-B">B.Sc. (N) III Semester Sec-B</option>
+                            <option value="B.Sc. (N) IV Semester Sec-A">B.Sc. (N) IV Semester Sec-A</option>
+                            <option value="B.Sc. (N) IV Semester Sec-B">B.Sc. (N) IV Semester Sec-B</option>
+                            <option value="B.Sc. (N) V Semester">B.Sc. (N) V Semester</option>
+                            <option value="B.Sc. (N) VI Semester">B.Sc. (N) VI Semester</option>
+                            <option value="B.Sc. (N) VII Semester">B.Sc. (N) VII Semester</option>
+                            <option value="B.Sc. (N) VIII Semester">B.Sc. (N) VIII Semester</option>
+                            <option value="GNM I Year">GNM I Year</option>
+                            <option value="GNM II Year">GNM II Year</option>
+                            <option value="GNM III Year">GNM III Year</option>
+                            <option value="ANM I Year">ANM I Year</option>
+                            <option value="ANM II Year">ANM II Year</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="ratingsFaculty">👨‍🏫 Select Faculty</label>
+                        <select id="ratingsFaculty">
+                            <option value="">-- Choose Faculty --</option>
+                            <option value="Mr. Henry">Mr. Henry</option>
+                            <option value="Ms. Aarti Pundir">Ms. Aarti Pundir</option>
+                            <option value="Ms. Pooja Chauhan">Ms. Pooja Chauhan</option>
+                            <option value="Ms. Khushboo Bahuguna">Ms. Khushboo Bahuguna</option>
+                            <option value="Ms. Kanchan Rawat">Ms. Kanchan Rawat</option>
+                            <option value="Ms. Simran Ahuja">Ms. Simran Ahuja</option>
+                            <option value="Ms. Khushboo Gautam">Ms. Khushboo Gautam</option>
+                            <option value="Ms. Neha">Ms. Neha</option>
+                            <option value="Ms. Rajani Air">Ms. Rajani Air</option>
+                            <option value="Ms. Manisha Kandiyal">Ms. Manisha Kandiyal</option>
+                            <option value="Ms. Meenakshi Negi">Ms. Meenakshi Negi</option>
+                            <option value="Ms. Reshma Shah">Ms. Reshma Shah</option>
+                            <option value="Ms. Sangeeta Negi">Ms. Sangeeta Negi</option>
+                            <option value="Ms. Sachin Kumar">Ms. Sachin Kumar</option>
+                            <option value="Mr. Prakul Topwal">Mr. Prakul Topwal</option>
+                            <option value="Ms. Akshi Bangari">Ms. Akshi Bangari</option>
+                            <option value="Ms. Mansi">Ms. Mansi</option>
+                            <option value="Ms. Madhu">Ms. Madhu</option>
+                            <option value="Ms. Bhumika">Ms. Bhumika</option>
+                            <option value="Ms. Ritika">Ms. Ritika</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="auto-note">💡 Reports generate automatically when you select Faculty! No button click needed.</div>
+                <div class="buttons" style="display:none;">
+                    <button class="btn-info" id="downloadRatingsBtn" style="display:none;">📥 Download Report</button>
+                </div>
+
+                <div id="ratingsWrapper" style="display: none;">
+                    <div class="summary-box">
+                        <div class="summary-item">
+                            <div class="summary-item-label">Faculty Name</div>
+                            <div class="summary-item-value" id="ratingsTitle">--</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-item-label">Course</div>
+                            <div class="summary-item-value" id="ratingsCourseInfo">--</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-item-label">Total Responses</div>
+                            <div class="summary-item-value" id="ratingsCount">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-item-label">Overall Average</div>
+                            <div class="summary-item-value" id="ratingsOverall">0.0</div>
+                        </div>
+                    </div>
+
+                    <h2 class="charts-title">📋 Question-wise Ratings</h2>
+                    <table class="ratings-table" id="ratingsTable"></table>
+                </div>
+
+                <div class="empty-state" id="emptyRatings">
+                    <div class="empty-state-icon">📋</div>
+                    <h2>No ratings yet</h2>
+                    <p>Select a faculty member to view their question-wise ratings</p>
+                </div>
+            </div>
+
+            <!-- TAB 3: ANALYSIS -->
+            <div id="analysis" class="tab-content">
+                <div class="controls-section">
+                    <div class="control-group">
+                        <label for="courseSelect">📚 Select Course</label>
+                        <select id="courseSelect">
+                            <option value="">-- Choose Course --</option>
+                            <option value="B.Sc. (N) I Semester Sec-A">B.Sc. (N) I Semester Sec-A</option>
+                            <option value="B.Sc. (N) I Semester Sec-B">B.Sc. (N) I Semester Sec-B</option>
+                            <option value="B.Sc. (N) II Semester Sec-A">B.Sc. (N) II Semester Sec-A</option>
+                            <option value="B.Sc. (N) II Semester Sec-B">B.Sc. (N) II Semester Sec-B</option>
+                            <option value="B.Sc. (N) III Semester Sec-A">B.Sc. (N) III Semester Sec-A</option>
+                            <option value="B.Sc. (N) III Semester Sec-B">B.Sc. (N) III Semester Sec-B</option>
+                            <option value="B.Sc. (N) IV Semester Sec-A">B.Sc. (N) IV Semester Sec-A</option>
+                            <option value="B.Sc. (N) IV Semester Sec-B">B.Sc. (N) IV Semester Sec-B</option>
+                            <option value="B.Sc. (N) V Semester">B.Sc. (N) V Semester</option>
+                            <option value="B.Sc. (N) VI Semester">B.Sc. (N) VI Semester</option>
+                            <option value="B.Sc. (N) VII Semester">B.Sc. (N) VII Semester</option>
+                            <option value="B.Sc. (N) VIII Semester">B.Sc. (N) VIII Semester</option>
+                            <option value="GNM I Year">GNM I Year</option>
+                            <option value="GNM II Year">GNM II Year</option>
+                            <option value="GNM III Year">GNM III Year</option>
+                            <option value="ANM I Year">ANM I Year</option>
+                            <option value="ANM II Year">ANM II Year</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="facultySelect">👨‍🏫 Select Faculty</label>
+                        <select id="facultySelect">
+                            <option value="">-- Choose Faculty --</option>
+                            <option value="Mr. Henry">Mr. Henry</option>
+                            <option value="Ms. Aarti Pundir">Ms. Aarti Pundir</option>
+                            <option value="Ms. Pooja Chauhan">Ms. Pooja Chauhan</option>
+                            <option value="Ms. Khushboo Bahuguna">Ms. Khushboo Bahuguna</option>
+                            <option value="Ms. Kanchan Rawat">Ms. Kanchan Rawat</option>
+                            <option value="Ms. Simran Ahuja">Ms. Simran Ahuja</option>
+                            <option value="Ms. Khushboo Gautam">Ms. Khushboo Gautam</option>
+                            <option value="Ms. Neha">Ms. Neha</option>
+                            <option value="Ms. Rajani Air">Ms. Rajani Air</option>
+                            <option value="Ms. Manisha Kandiyal">Ms. Manisha Kandiyal</option>
+                            <option value="Ms. Meenakshi Negi">Ms. Meenakshi Negi</option>
+                            <option value="Ms. Reshma Shah">Ms. Reshma Shah</option>
+                            <option value="Ms. Sangeeta Negi">Ms. Sangeeta Negi</option>
+                            <option value="Ms. Sachin Kumar">Ms. Sachin Kumar</option>
+                            <option value="Mr. Prakul Topwal">Mr. Prakul Topwal</option>
+                            <option value="Ms. Akshi Bangari">Ms. Akshi Bangari</option>
+                            <option value="Ms. Mansi">Ms. Mansi</option>
+                            <option value="Ms. Madhu">Ms. Madhu</option>
+                            <option value="Ms. Bhumika">Ms. Bhumika</option>
+                            <option value="Ms. Ritika">Ms. Ritika</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="chartType">📊 Chart Type</label>
+                        <select id="chartType">
+                            <option value="bar">Bar Chart</option>
+                            <option value="line">Line Chart</option>
+                            <option value="doughnut">Pie Chart</option>
+                            <option value="radar">Radar Chart</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="auto-note">💡 Charts generate automatically when you select Faculty, Course & Chart Type! No button click needed.</div>
+                <div class="buttons" style="display:none;">
+                    <button class="btn-primary" id="analyzeBtn">Analyze & Generate Charts</button>
+                    <button class="btn-info" id="downloadPdfBtn" style="display:none;">📥 Download as PDF</button>
+                    <button class="btn-secondary" id="resetBtn">Reset All</button>
+                </div>
+
+                <div id="chartsWrapper" style="display: none;">
+                    <h2 class="charts-title">📈 Analysis Results</h2>
+                    <div class="charts-container" id="chartsContainer"></div>
+                </div>
+
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📈</div>
+                    <h2>No data yet</h2>
+                    <p>Upload a file to get started</p>
+                </div>
+            </div>
+
+            <!-- TAB 4: PROFILE -->
+            <div id="profile" class="tab-content">
+                <div class="controls-section" style="grid-template-columns: 1fr 1fr;">
+                    <div class="control-group">
+                        <label for="profileCourse">📚 Select Course</label>
+                        <select id="profileCourse">
+                            <option value="">-- Choose Course --</option>
+                            <option value="B.Sc. (N) I Semester Sec-A">B.Sc. (N) I Semester Sec-A</option>
+                            <option value="B.Sc. (N) I Semester Sec-B">B.Sc. (N) I Semester Sec-B</option>
+                            <option value="B.Sc. (N) II Semester Sec-A">B.Sc. (N) II Semester Sec-A</option>
+                            <option value="B.Sc. (N) II Semester Sec-B">B.Sc. (N) II Semester Sec-B</option>
+                            <option value="B.Sc. (N) III Semester Sec-A">B.Sc. (N) III Semester Sec-A</option>
+                            <option value="B.Sc. (N) III Semester Sec-B">B.Sc. (N) III Semester Sec-B</option>
+                            <option value="B.Sc. (N) IV Semester Sec-A">B.Sc. (N) IV Semester Sec-A</option>
+                            <option value="B.Sc. (N) IV Semester Sec-B">B.Sc. (N) IV Semester Sec-B</option>
+                            <option value="B.Sc. (N) V Semester">B.Sc. (N) V Semester</option>
+                            <option value="B.Sc. (N) VI Semester">B.Sc. (N) VI Semester</option>
+                            <option value="B.Sc. (N) VII Semester">B.Sc. (N) VII Semester</option>
+                            <option value="B.Sc. (N) VIII Semester">B.Sc. (N) VIII Semester</option>
+                            <option value="GNM I Year">GNM I Year</option>
+                            <option value="GNM II Year">GNM II Year</option>
+                            <option value="GNM III Year">GNM III Year</option>
+                            <option value="ANM I Year">ANM I Year</option>
+                            <option value="ANM II Year">ANM II Year</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="profileFaculty">👨‍🏫 Select Faculty</label>
+                        <select id="profileFaculty">
+                            <option value="">-- Choose Faculty --</option>
+                            <option value="Mr. Henry">Mr. Henry</option>
+                            <option value="Ms. Aarti Pundir">Ms. Aarti Pundir</option>
+                            <option value="Ms. Pooja Chauhan">Ms. Pooja Chauhan</option>
+                            <option value="Ms. Khushboo Bahuguna">Ms. Khushboo Bahuguna</option>
+                            <option value="Ms. Kanchan Rawat">Ms. Kanchan Rawat</option>
+                            <option value="Ms. Simran Ahuja">Ms. Simran Ahuja</option>
+                            <option value="Ms. Khushboo Gautam">Ms. Khushboo Gautam</option>
+                            <option value="Ms. Neha">Ms. Neha</option>
+                            <option value="Ms. Rajani Air">Ms. Rajani Air</option>
+                            <option value="Ms. Manisha Kandiyal">Ms. Manisha Kandiyal</option>
+                            <option value="Ms. Meenakshi Negi">Ms. Meenakshi Negi</option>
+                            <option value="Ms. Reshma Shah">Ms. Reshma Shah</option>
+                            <option value="Ms. Sangeeta Negi">Ms. Sangeeta Negi</option>
+                            <option value="Ms. Sachin Kumar">Ms. Sachin Kumar</option>
+                            <option value="Mr. Prakul Topwal">Mr. Prakul Topwal</option>
+                            <option value="Ms. Akshi Bangari">Ms. Akshi Bangari</option>
+                            <option value="Ms. Mansi">Ms. Mansi</option>
+                            <option value="Ms. Madhu">Ms. Madhu</option>
+                            <option value="Ms. Bhumika">Ms. Bhumika</option>
+                            <option value="Ms. Ritika">Ms. Ritika</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="auto-note">💡 Profile generates automatically when you select Faculty & Course! No button click needed.</div>
+                <div class="buttons" style="display:none;">
+                    <button class="btn-primary" id="generateProfileBtn">Generate Profile</button>
+                    <button class="btn-info" id="downloadProfileBtn" style="display:none;">📥 Download Profile</button>
+                </div>
+
+                <div id="profileWrapper" style="display: none;">
+                    <div class="profile-header">
+                        <h2 id="profileName"></h2>
+                        <p id="profileCourseInfo"></p>
+                    </div>
+
+                    <div class="overview-cards" id="overviewCards"></div>
+
+                    <h2 class="charts-title">🎯 Key Insights & Recommendations</h2>
+                    <div class="insights-container" id="insightsContainer"></div>
+
+                    <h2 class="charts-title">📊 Detailed Section Scores</h2>
+                    <div class="performance-gauge" id="performanceGauge"></div>
+                </div>
+
+                <div class="empty-state" id="emptyProfile">
+                    <div class="empty-state-icon">👤</div>
+                    <h2>No profile yet</h2>
+                    <p>Select a faculty member to view their profile</p>
+                </div>
+            </div>
+
+            <!-- TAB 5: COMPARE -->
+            <div id="compare" class="tab-content">
+                <div class="controls-section">
+                    <div class="control-group">
+                        <label for="compareCourse">📚 Select Course</label>
+                        <select id="compareCourse">
+                            <option value="">-- Choose Course --</option>
+                            <option value="B.Sc. (N) I Semester Sec-A">B.Sc. (N) I Semester Sec-A</option>
+                            <option value="B.Sc. (N) I Semester Sec-B">B.Sc. (N) I Semester Sec-B</option>
+                            <option value="B.Sc. (N) II Semester Sec-A">B.Sc. (N) II Semester Sec-A</option>
+                            <option value="B.Sc. (N) II Semester Sec-B">B.Sc. (N) II Semester Sec-B</option>
+                            <option value="B.Sc. (N) III Semester Sec-A">B.Sc. (N) III Semester Sec-A</option>
+                            <option value="B.Sc. (N) III Semester Sec-B">B.Sc. (N) III Semester Sec-B</option>
+                            <option value="B.Sc. (N) IV Semester Sec-A">B.Sc. (N) IV Semester Sec-A</option>
+                            <option value="B.Sc. (N) IV Semester Sec-B">B.Sc. (N) IV Semester Sec-B</option>
+                            <option value="B.Sc. (N) V Semester">B.Sc. (N) V Semester</option>
+                            <option value="B.Sc. (N) VI Semester">B.Sc. (N) VI Semester</option>
+                            <option value="B.Sc. (N) VII Semester">B.Sc. (N) VII Semester</option>
+                            <option value="B.Sc. (N) VIII Semester">B.Sc. (N) VIII Semester</option>
+                            <option value="GNM I Year">GNM I Year</option>
+                            <option value="GNM II Year">GNM II Year</option>
+                            <option value="GNM III Year">GNM III Year</option>
+                            <option value="ANM I Year">ANM I Year</option>
+                            <option value="ANM II Year">ANM II Year</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="faculty1Select">👨‍🏫 Faculty 1</label>
+                        <select id="faculty1Select">
+                            <option value="">-- Choose Faculty --</option>
+                            <option value="Mr. Henry">Mr. Henry</option>
+                            <option value="Ms. Aarti Pundir">Ms. Aarti Pundir</option>
+                            <option value="Ms. Pooja Chauhan">Ms. Pooja Chauhan</option>
+                            <option value="Ms. Khushboo Bahuguna">Ms. Khushboo Bahuguna</option>
+                            <option value="Ms. Kanchan Rawat">Ms. Kanchan Rawat</option>
+                            <option value="Ms. Simran Ahuja">Ms. Simran Ahuja</option>
+                            <option value="Ms. Khushboo Gautam">Ms. Khushboo Gautam</option>
+                            <option value="Ms. Neha">Ms. Neha</option>
+                            <option value="Ms. Rajani Air">Ms. Rajani Air</option>
+                            <option value="Ms. Manisha Kandiyal">Ms. Manisha Kandiyal</option>
+                            <option value="Ms. Meenakshi Negi">Ms. Meenakshi Negi</option>
+                            <option value="Ms. Reshma Shah">Ms. Reshma Shah</option>
+                            <option value="Ms. Sangeeta Negi">Ms. Sangeeta Negi</option>
+                            <option value="Ms. Sachin Kumar">Ms. Sachin Kumar</option>
+                            <option value="Mr. Prakul Topwal">Mr. Prakul Topwal</option>
+                            <option value="Ms. Akshi Bangari">Ms. Akshi Bangari</option>
+                            <option value="Ms. Mansi">Ms. Mansi</option>
+                            <option value="Ms. Madhu">Ms. Madhu</option>
+                            <option value="Ms. Bhumika">Ms. Bhumika</option>
+                            <option value="Ms. Ritika">Ms. Ritika</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="faculty2Select">👨‍🏫 Faculty 2</label>
+                        <select id="faculty2Select">
+                            <option value="">-- Choose Faculty --</option>
+                            <option value="Mr. Henry">Mr. Henry</option>
+                            <option value="Ms. Aarti Pundir">Ms. Aarti Pundir</option>
+                            <option value="Ms. Pooja Chauhan">Ms. Pooja Chauhan</option>
+                            <option value="Ms. Khushboo Bahuguna">Ms. Khushboo Bahuguna</option>
+                            <option value="Ms. Kanchan Rawat">Ms. Kanchan Rawat</option>
+                            <option value="Ms. Simran Ahuja">Ms. Simran Ahuja</option>
+                            <option value="Ms. Khushboo Gautam">Ms. Khushboo Gautam</option>
+                            <option value="Ms. Neha">Ms. Neha</option>
+                            <option value="Ms. Rajani Air">Ms. Rajani Air</option>
+                            <option value="Ms. Manisha Kandiyal">Ms. Manisha Kandiyal</option>
+                            <option value="Ms. Meenakshi Negi">Ms. Meenakshi Negi</option>
+                            <option value="Ms. Reshma Shah">Ms. Reshma Shah</option>
+                            <option value="Ms. Sangeeta Negi">Ms. Sangeeta Negi</option>
+                            <option value="Ms. Sachin Kumar">Ms. Sachin Kumar</option>
+                            <option value="Mr. Prakul Topwal">Mr. Prakul Topwal</option>
+                            <option value="Ms. Akshi Bangari">Ms. Akshi Bangari</option>
+                            <option value="Ms. Mansi">Ms. Mansi</option>
+                            <option value="Ms. Madhu">Ms. Madhu</option>
+                            <option value="Ms. Bhumika">Ms. Bhumika</option>
+                            <option value="Ms. Ritika">Ms. Ritika</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="auto-note">💡 Comparison generates automatically when you select Course & Faculty! No button click needed.</div>
+                <div class="buttons" style="display:none;">
+                    <button class="btn-primary" id="compareBtn">Compare Faculty</button>
+                    <button class="btn-info" id="downloadCompareBtn" style="display:none;">📥 Download Comparison</button>
+                </div>
+
+                <div id="comparisonWrapper" style="display: none;">
+                    <h2 class="charts-title">⚖️ Faculty Comparison</h2>
+                    <div class="insights-container" id="comparisonContainer"></div>
+                </div>
+
+                <div class="empty-state" id="emptyComparison">
+                    <div class="empty-state-icon">⚖️</div>
+                    <h2>No comparison yet</h2>
+                    <p>Select two faculty members to compare</p>
+                </div>
+            </div>
+
+            <!-- TAB 6: STATISTICS -->
+            <div id="statistics" class="tab-content">
+                <div class="controls-section" style="grid-template-columns: 1fr;">
+                    <div class="control-group">
+                        <label for="statsCourse">📚 Select Course</label>
+                        <select id="statsCourse">
+                            <option value="">-- Choose Course --</option>
+                            <option value="B.Sc. (N) I Semester Sec-A">B.Sc. (N) I Semester Sec-A</option>
+                            <option value="B.Sc. (N) I Semester Sec-B">B.Sc. (N) I Semester Sec-B</option>
+                            <option value="B.Sc. (N) II Semester Sec-A">B.Sc. (N) II Semester Sec-A</option>
+                            <option value="B.Sc. (N) II Semester Sec-B">B.Sc. (N) II Semester Sec-B</option>
+                            <option value="B.Sc. (N) III Semester Sec-A">B.Sc. (N) III Semester Sec-A</option>
+                            <option value="B.Sc. (N) III Semester Sec-B">B.Sc. (N) III Semester Sec-B</option>
+                            <option value="B.Sc. (N) IV Semester Sec-A">B.Sc. (N) IV Semester Sec-A</option>
+                            <option value="B.Sc. (N) IV Semester Sec-B">B.Sc. (N) IV Semester Sec-B</option>
+                            <option value="B.Sc. (N) V Semester">B.Sc. (N) V Semester</option>
+                            <option value="B.Sc. (N) VI Semester">B.Sc. (N) VI Semester</option>
+                            <option value="B.Sc. (N) VII Semester">B.Sc. (N) VII Semester</option>
+                            <option value="B.Sc. (N) VIII Semester">B.Sc. (N) VIII Semester</option>
+                            <option value="GNM I Year">GNM I Year</option>
+                            <option value="GNM II Year">GNM II Year</option>
+                            <option value="GNM III Year">GNM III Year</option>
+                            <option value="ANM I Year">ANM I Year</option>
+                            <option value="ANM II Year">ANM II Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="auto-note">💡 Statistics generate automatically when you select Course! No button click needed.</div>
+                <div class="buttons" style="display:none;">
+                    <button class="btn-primary" id="statsBtn">Generate Statistics</button>
+                    <button class="btn-info" id="downloadStatsBtn" style="display:none;">📥 Download Statistics</button>
+                </div>
+
+                <div id="statsWrapper" style="display: none;">
+                    <h2 class="charts-title">📊 Summary Statistics</h2>
+                    <table class="ratings-table" id="statsTable"></table>
+                </div>
+
+                <div class="empty-state" id="emptyStats">
+                    <div class="empty-state-icon">📊</div>
+                    <h2>No statistics yet</h2>
+                    <p>Select a course to view detailed statistics</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        const chartInstances = {};
+
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Tab switching
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Upload handlers
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.style.background = '#e8eaf6';
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.style.background = 'transparent';
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.style.background = 'transparent';
+            if (e.dataTransfer.files[0]) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function showStatus(msg, type) {
+            statusMessage.textContent = msg;
+            statusMessage.className = 'status show ' + type;
+            if (type === 'success') {
+                setTimeout(() => statusMessage.classList.remove('show'), 4000);
+            }
+        }
+
+        function handleFile(file) {
+            if (typeof XLSX === 'undefined') {
+                showStatus('Error: Excel library not loaded. Please refresh the page.', 'error');
+                return;
+            }
+
+            try {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let json = [];
+                        
+                        if (file.name.endsWith('.csv')) {
+                            const text = e.target.result;
+                            const lines = text.split('\n');
+                            const headers = lines[0].split(',').map(h => h.trim());
+                            
+                            for (let i = 1; i < lines.length; i++) {
+                                if (lines[i].trim() === '') continue;
+                                const values = lines[i].split(',').map(v => v.trim());
+                                const row = {};
+                                headers.forEach((header, index) => {
+                                    row[header] = values[index];
+                                });
+                                json.push(row);
+                            }
+                        } else {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                            json = XLSX.utils.sheet_to_json(worksheet);
+                        }
+
+                        if (json.length === 0) {
+                            showStatus('File is empty', 'error');
+                            return;
+                        }
+
+                        allData = json;
+                        fileInfo.innerHTML = '<div style="color: #155724;">✓ Successfully loaded ' + json.length + ' feedback records from ' + file.name + '</div>';
+                        fileInfo.className = 'file-info show success';
+                        showStatus('✓ File uploaded successfully!', 'success');
+                    } catch (err) {
+                        showStatus('Error: ' + err.message, 'error');
+                        console.error(err);
+                    }
+                };
+                
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            } catch (err) {
+                showStatus('Error reading file: ' + err.message, 'error');
+            }
+        }
+
+        // Helper functions
+        function getHeaders() {
+            return allData.length > 0 ? Object.keys(allData[0]) : [];
+        }
+
+        function getCourseColumn() {
+            const headers = getHeaders();
+            return headers.find(h => h.toLowerCase().includes('course'));
+        }
+
+        function getFacultyColumn() {
+            const headers = getHeaders();
+            return headers.find(h => h.toLowerCase().includes('faculty') || h.toLowerCase().includes('teacher'));
+        }
+
+        function getNumericColumns() {
+            const headers = getHeaders();
+            return headers.filter(h => {
+                const lower = h.toLowerCase();
+                return !lower.includes('course') && !lower.includes('faculty') && !lower.includes('teacher') && !lower.includes('suggestion');
+            });
+        }
+
+        function getSectionName(num) {
+            const names = {
+                '1': '1. Teaching Effectiveness',
+                '2': '2. Classroom Management',
+                '3': '3. Communication Skills',
+                '4': '4. Subject Knowledge & Preparation',
+                '5': '5. Assessment Evaluation',
+                '6': '6. Professionalism & Personality'
+            };
+            return names[num] || 'Section ' + num;
+        }
+
+        function calculateScore(values) {
+            if (values.length === 0) return 0;
+            const nums = values.map(v => parseFloat(v) || 0);
+            return (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2);
+        }
+
+        function getPerformanceLevel(score) {
+            score = parseFloat(score);
+            if (score >= 4.5) return { level: 'Excellent', class: 'excellent', icon: '🌟' };
+            if (score >= 3.5) return { level: 'Good', class: 'good', icon: '✓' };
+            if (score >= 2.5) return { level: 'Average', class: 'average', icon: '→' };
+            return { level: 'Needs Improvement', class: 'poor', icon: '⚠' };
+        }
+
+        // FACULTY RATINGS TAB (NEW!)
+        // Auto-generate when dropdowns change
+        document.getElementById('ratingsCourse').addEventListener('change', generateRatingsReport);
+        document.getElementById('ratingsFaculty').addEventListener('change', generateRatingsReport);
+        
+        document.getElementById('generateRatingsBtn').addEventListener('click', generateRatingsReport);
+        document.getElementById('downloadRatingsBtn').addEventListener('click', downloadRatingsReport);
+
+        function generateRatingsReport() {
+            if (allData.length === 0) {
+                showStatus('Please upload a file first', 'error');
+                document.getElementById('ratingsWrapper').style.display = 'none';
+                document.getElementById('emptyRatings').style.display = 'block';
+                return;
+            }
+
+            const course = document.getElementById('ratingsCourse').value;
+            const faculty = document.getElementById('ratingsFaculty').value;
+
+            if (!faculty) {
+                document.getElementById('ratingsWrapper').style.display = 'none';
+                document.getElementById('emptyRatings').style.display = 'block';
+                return;
+            }
+
+            const courseCol = getCourseColumn();
+            const facultyCol = getFacultyColumn();
+            const numericCols = getNumericColumns();
+
+            if (!facultyCol) {
+                showStatus('Excel file must contain Faculty column', 'error');
+                document.getElementById('ratingsWrapper').style.display = 'none';
+                document.getElementById('emptyRatings').style.display = 'block';
+                return;
+            }
+
+            // Filter data
+            let filtered = allData.filter(r => String(r[facultyCol]).trim() === faculty.trim());
+            
+            if (course) {
+                filtered = filtered.filter(r => String(r[courseCol]).trim() === course.trim());
+            }
+
+            if (filtered.length === 0) {
+                showStatus('No data found for this faculty', 'error');
+                document.getElementById('ratingsWrapper').style.display = 'none';
+                document.getElementById('emptyRatings').innerHTML = '<div class="auto-note">⚠️ No data found for ' + faculty + (course ? ' in ' + course : '') + '</div><div class="auto-note">💡 Reports generate automatically when you select Faculty! No button click needed.</div>';
+                document.getElementById('emptyRatings').style.display = 'block';
+                return;
+            }
+
+            // Update header
+            document.getElementById('ratingsTitle').textContent = faculty;
+            document.getElementById('ratingsCourseInfo').textContent = course || 'All Courses';
+            document.getElementById('ratingsCount').textContent = filtered.length;
+
+            // Calculate overall average
+            const allValues = [];
+            filtered.forEach(row => {
+                numericCols.forEach(col => {
+                    const val = parseFloat(row[col]);
+                    if (!isNaN(val)) allValues.push(val);
+                });
+            });
+            const overallAvg = calculateScore(allValues);
+            document.getElementById('ratingsOverall').textContent = overallAvg;
+
+            // Create ratings table
+            const table = document.getElementById('ratingsTable');
+            let html = '<tr><th>Question</th><th>Average Rating</th><th>Students Participation</th></tr>';
+
+            numericCols.forEach(col => {
+                const values = filtered.map(r => {
+                    const val = parseFloat(r[col]);
+                    return isNaN(val) ? 0 : val;
+                });
+
+                const avg = calculateScore(values);
+                const count = values.filter(v => v > 0).length;
+                const percentage = ((count / filtered.length) * 100).toFixed(0);
+
+                // Determine participation level
+                let participationClass = 'high';
+                if (percentage < 50) participationClass = 'low';
+                else if (percentage < 80) participationClass = 'medium';
+
+                const fillWidth = (avg / 5) * 100;
+
+                html += `
+                    <tr>
+                        <td class="question-cell">${col.substring(col.indexOf('.') + 1).trim()}</td>
+                        <td>
+                            <div class="rating-display">
+                                <span class="rating-value">${avg}/5</span>
+                                <div class="rating-bar">
+                                    <div class="rating-fill" style="width: ${fillWidth}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="participation-badge ${participationClass}">${count}/${filtered.length} (${percentage}%)</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            table.innerHTML = html;
+
+            document.getElementById('ratingsWrapper').style.display = 'block';
+            document.getElementById('emptyRatings').style.display = 'none';
+            document.getElementById('downloadRatingsBtn').style.display = 'inline-block';
+            showStatus('✓ Ratings report generated!', 'success');
+        }
+
+        function downloadRatingsReport() {
+            const element = document.getElementById('ratingsWrapper');
+            const opt = {
+                margin: 10,
+                filename: 'Faculty_Ratings_Report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+            html2pdf().set(opt).from(element).save();
+            showStatus('✓ PDF downloaded!', 'success');
+        }
+
+        // ANALYSIS TAB
+        // Auto-generate when dropdowns change
+        document.getElementById('courseSelect').addEventListener('change', generateCharts);
+        document.getElementById('facultySelect').addEventListener('change', generateCharts);
+        document.getElementById('chartType').addEventListener('change', generateCharts);
+        
+        document.getElementById('analyzeBtn').addEventListener('click', generateCharts);
+        document.getElementById('resetBtn').addEventListener('click', reset);
+        document.getElementById('downloadPdfBtn').addEventListener('click', downloadPDF);
+
+        function generateCharts() {
+            if (allData.length === 0) {
+                showStatus('Please upload a file first', 'error');
+                document.getElementById('chartsWrapper').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            const course = document.getElementById('courseSelect').value;
+            const faculty = document.getElementById('facultySelect').value;
+
+            if (!course || !faculty) {
+                document.getElementById('chartsWrapper').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            const courseCol = getCourseColumn();
+            const facultyCol = getFacultyColumn();
+            const numericCols = getNumericColumns();
+
+            if (!courseCol || !facultyCol) {
+                showStatus('Excel file must contain Course and Faculty columns', 'error');
+                document.getElementById('chartsWrapper').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            let filtered = allData.filter(r => {
+                const courseMatch = String(r[courseCol]).trim() === course.trim();
+                const facultyMatch = String(r[facultyCol]).trim() === faculty.trim();
+                return courseMatch && facultyMatch;
+            });
+
+            if (filtered.length === 0) {
+                showStatus('No data found for this faculty', 'error');
+                document.getElementById('chartsWrapper').style.display = 'none';
+                document.getElementById('emptyState').innerHTML = '<div class="auto-note">⚠️ No data found for ' + faculty + ' in ' + course + '</div><div class="auto-note">💡 Charts generate automatically when you select Faculty & Course! No button click needed.</div>';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            // Clear previous charts
+            Object.values(chartInstances).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            
+            document.getElementById('chartsContainer').innerHTML = '';
+            
+            const sections = {};
+            numericCols.forEach(col => {
+                const match = col.match(/^(\d+)/);
+                const sectionNum = match ? match[1] : 'other';
+                if (!sections[sectionNum]) sections[sectionNum] = [];
+                sections[sectionNum].push(col);
+            });
+
+            let chartIndex = 0;
+            Object.keys(sections).sort().forEach(sectionNum => {
+                const sectionCols = sections[sectionNum];
+                const sectionTitle = getSectionName(sectionNum);
+
+                const sectionData = {};
+                sectionCols.forEach(col => {
+                    const values = filtered.map(r => {
+                        const val = parseFloat(r[col]);
+                        return isNaN(val) ? 0 : val;
+                    });
+                    const avg = calculateScore(values);
+                    const label = col.substring(col.indexOf('.') + 1).trim().substring(0, 20);
+                    sectionData[label] = avg;
+                });
+
+                createChart(sectionTitle, sectionData, document.getElementById('chartType').value, chartIndex);
+                chartIndex++;
+            });
+
+            document.getElementById('chartsWrapper').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('downloadPdfBtn').style.display = 'inline-block';
+            showStatus('✓ Charts generated!', 'success');
+        }
+
+        function createChart(title, data, chartType, index) {
+            const card = document.createElement('div');
+            card.className = 'chart-card';
+
+            const labels = Object.keys(data);
+            const values = labels.map(l => parseFloat(data[l]));
+            const avg = calculateScore(values);
+            const max = Math.max(...values).toFixed(2);
+            const min = Math.min(...values).toFixed(2);
+
+            const canvasId = 'chart-' + index;
+            card.innerHTML = `
+                <h3>${title}</h3>
+                <div class="chart-canvas">
+                    <canvas id="${canvasId}"></canvas>
+                </div>
+                <div class="chart-stats">
+                    <div class="stat">
+                        <div class="stat-label">Average</div>
+                        <div class="stat-value">${avg}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Highest</div>
+                        <div class="stat-value">${max}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Lowest</div>
+                        <div class="stat-value">${min}</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('chartsContainer').appendChild(card);
+
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b'];
+            
+            const config = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: title,
+                        data: values,
+                        backgroundColor: chartType === 'doughnut' ? colors.slice(0, labels.length) : colors[0] + '80',
+                        borderColor: chartType === 'doughnut' ? '#fff' : colors[0],
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: colors[0]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: (chartType === 'doughnut' || chartType === 'radar') ? {} : {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: chartType === 'doughnut'
+                        }
+                    }
+                }
+            };
+
+            chartInstances[canvasId] = new Chart(ctx, config);
+        }
+
+        // PROFILE TAB
+        // Auto-generate when dropdowns change
+        document.getElementById('profileCourse').addEventListener('change', generateProfile);
+        document.getElementById('profileFaculty').addEventListener('change', generateProfile);
+        
+        document.getElementById('generateProfileBtn').addEventListener('click', generateProfile);
+        document.getElementById('downloadProfileBtn').addEventListener('click', downloadProfile);
+
+        function generateProfile() {
+            if (allData.length === 0) {
+                showStatus('Please upload a file first', 'error');
+                document.getElementById('profileWrapper').style.display = 'none';
+                document.getElementById('emptyProfile').style.display = 'block';
+                return;
+            }
+
+            const course = document.getElementById('profileCourse').value;
+            const faculty = document.getElementById('profileFaculty').value;
+
+            if (!course || !faculty) {
+                document.getElementById('profileWrapper').style.display = 'none';
+                document.getElementById('emptyProfile').style.display = 'block';
+                return;
+            }
+
+            const courseCol = getCourseColumn();
+            const facultyCol = getFacultyColumn();
+            const numericCols = getNumericColumns();
+
+            if (!courseCol || !facultyCol) {
+                showStatus('Excel file must contain Course and Faculty columns', 'error');
+                document.getElementById('profileWrapper').style.display = 'none';
+                document.getElementById('emptyProfile').style.display = 'block';
+                return;
+            }
+
+            let filtered = allData.filter(r => 
+                String(r[courseCol]).trim() === course.trim() && 
+                String(r[facultyCol]).trim() === faculty.trim()
+            );
+
+            if (filtered.length === 0) {
+                showStatus('No data found for this faculty', 'error');
+                document.getElementById('profileWrapper').style.display = 'none';
+                document.getElementById('emptyProfile').innerHTML = '<div class="auto-note">⚠️ No data found for ' + faculty + ' in ' + course + '</div><div class="auto-note">💡 Profile generates automatically when you select Faculty & Course! No button click needed.</div>';
+                document.getElementById('emptyProfile').style.display = 'block';
+                return;
+            }
+
+            const sections = {};
+            numericCols.forEach(col => {
+                const match = col.match(/^(\d+)/);
+                const sectionNum = match ? match[1] : 'other';
+                if (!sections[sectionNum]) sections[sectionNum] = [];
+                sections[sectionNum].push(col);
+            });
+
+            const sectionScores = {};
+            Object.keys(sections).forEach(sectionNum => {
+                const sectionCols = sections[sectionNum];
+                const scores = [];
+                
+                filtered.forEach(row => {
+                    sectionCols.forEach(col => {
+                        const val = parseFloat(row[col]);
+                        if (!isNaN(val)) scores.push(val);
+                    });
+                });
+
+                sectionScores[sectionNum] = calculateScore(scores);
+            });
+
+            const overallScore = calculateScore(Object.values(sectionScores));
+
+            document.getElementById('profileName').textContent = faculty;
+            document.getElementById('profileCourseInfo').textContent = course + ' • ' + filtered.length + ' Responses';
+
+            const overviewCards = document.getElementById('overviewCards');
+            overviewCards.innerHTML = '';
+
+            const overallLevel = getPerformanceLevel(overallScore);
+            const card = document.createElement('div');
+            card.className = 'overview-card ' + overallLevel.class;
+            card.innerHTML = `
+                <div class="card-label">Overall Performance</div>
+                <div class="card-value">${overallScore}/5.0</div>
+                <div class="card-category">${overallLevel.level}</div>
+            `;
+            overviewCards.appendChild(card);
+
+            const sortedSections = Object.keys(sectionScores)
+                .map(num => ({ num, score: parseFloat(sectionScores[num]) }))
+                .sort((a, b) => b.score - a.score);
+
+            const bestSection = sortedSections[0];
+            const worstSection = sortedSections[sortedSections.length - 1];
+
+            const bestCard = document.createElement('div');
+            bestCard.className = 'overview-card strength';
+            bestCard.innerHTML = `
+                <div class="card-label">Strongest Area</div>
+                <div class="card-value">${bestSection.score}/5.0</div>
+                <div class="card-category">${getSectionName(bestSection.num).split('.')[1]}</div>
+            `;
+            overviewCards.appendChild(bestCard);
+
+            const weakCard = document.createElement('div');
+            weakCard.className = 'overview-card weakness';
+            weakCard.innerHTML = `
+                <div class="card-label">Needs Improvement</div>
+                <div class="card-value">${worstSection.score}/5.0</div>
+                <div class="card-category">${getSectionName(worstSection.num).split('.')[1]}</div>
+            `;
+            overviewCards.appendChild(weakCard);
+
+            const insightsContainer = document.getElementById('insightsContainer');
+            insightsContainer.innerHTML = '';
+
+            const strengthCard = document.createElement('div');
+            strengthCard.className = 'insight-card strength';
+            strengthCard.innerHTML = `
+                <h3>💪 Strengths</h3>
+                <ul class="recommendation-list">
+            `;
+            sortedSections.slice(0, 2).forEach(({ num, score }) => {
+                const section = getSectionName(num).split('.')[1].trim();
+                strengthCard.innerHTML += `<li>${section}: ${score}/5.0 - Excellent performance!</li>`;
+            });
+            strengthCard.innerHTML += `</ul>`;
+            insightsContainer.appendChild(strengthCard);
+
+            const weaknessCard = document.createElement('div');
+            weaknessCard.className = 'insight-card weakness';
+            weaknessCard.innerHTML = `
+                <h3>⚠️ Areas for Improvement</h3>
+                <ul class="recommendation-list weakness-list">
+            `;
+            sortedSections.slice(-2).forEach(({ num, score }) => {
+                const section = getSectionName(num).split('.')[1].trim();
+                weaknessCard.innerHTML += `<li>${section}: ${score}/5.0 - Needs attention</li>`;
+            });
+            weaknessCard.innerHTML += `</ul>`;
+            insightsContainer.appendChild(weaknessCard);
+
+            const recommendationCard = document.createElement('div');
+            recommendationCard.className = 'insight-card improvement';
+            recommendationCard.innerHTML = `
+                <h3>📋 Recommendations</h3>
+                <ul class="recommendation-list improvement-list">
+            `;
+
+            if (worstSection.score < 3) {
+                const section = getSectionName(worstSection.num).split('.')[1].trim();
+                recommendationCard.innerHTML += `<li>Focus on improving ${section} - critical area</li>`;
+                recommendationCard.innerHTML += `<li>Seek professional development in ${section}</li>`;
+            }
+
+            if (worstSection.score < 3.5) {
+                recommendationCard.innerHTML += `<li>Regular feedback sessions with students</li>`;
+                recommendationCard.innerHTML += `<li>Mentoring from peer faculty members</li>`;
+            }
+
+            recommendationCard.innerHTML += `<li>Continue building on current strengths</li>`;
+            recommendationCard.innerHTML += `<li>Set specific goals for improvement</li>`;
+            recommendationCard.innerHTML += `</ul>`;
+            insightsContainer.appendChild(recommendationCard);
+
+            const performanceGauge = document.getElementById('performanceGauge');
+            performanceGauge.innerHTML = '';
+
+            Object.keys(sections).sort().forEach(sectionNum => {
+                const score = parseFloat(sectionScores[sectionNum]);
+                const level = getPerformanceLevel(score);
+                const gauge = document.createElement('div');
+                gauge.className = 'gauge';
+                gauge.innerHTML = `
+                    <div class="gauge-label">${getSectionName(sectionNum).split('.')[1].trim()}</div>
+                    <div class="gauge-circle ${level.class}">
+                        ${score}
+                    </div>
+                `;
+                performanceGauge.appendChild(gauge);
+            });
+
+            document.getElementById('profileWrapper').style.display = 'block';
+            document.getElementById('emptyProfile').style.display = 'none';
+            document.getElementById('downloadProfileBtn').style.display = 'inline-block';
+            showStatus('✓ Profile generated!', 'success');
+        }
+
+        function downloadProfile() {
+            const element = document.getElementById('profileWrapper');
+            const opt = {
+                margin: 10,
+                filename: 'Faculty_Profile.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+            html2pdf().set(opt).from(element).save();
+            showStatus('✓ Profile PDF downloaded!', 'success');
+        }
+
+        // COMPARE TAB
+        // Auto-generate when dropdowns change
+        document.getElementById('compareCourse').addEventListener('change', compareFaculty);
+        document.getElementById('faculty1Select').addEventListener('change', compareFaculty);
+        document.getElementById('faculty2Select').addEventListener('change', compareFaculty);
+        
+        document.getElementById('compareBtn').addEventListener('click', compareFaculty);
+        document.getElementById('downloadCompareBtn').addEventListener('click', downloadComparison);
+
+        function compareFaculty() {
+            if (allData.length === 0) {
+                showStatus('Please upload a file first', 'error');
+                document.getElementById('comparisonWrapper').style.display = 'none';
+                document.getElementById('emptyComparison').style.display = 'block';
+                return;
+            }
+
+            const course = document.getElementById('compareCourse').value;
+            const faculty1 = document.getElementById('faculty1Select').value;
+            const faculty2 = document.getElementById('faculty2Select').value;
+
+            if (!course || !faculty1 || !faculty2 || faculty1 === faculty2) {
+                document.getElementById('comparisonWrapper').style.display = 'none';
+                document.getElementById('emptyComparison').style.display = 'block';
+                return;
+            }
+
+            const courseCol = getCourseColumn();
+            const facultyCol = getFacultyColumn();
+            const numericCols = getNumericColumns();
+
+            // Check if data exists
+            const data1 = allData.filter(r => String(r[courseCol]).trim() === course.trim() && String(r[facultyCol]).trim() === faculty1.trim());
+            const data2 = allData.filter(r => String(r[courseCol]).trim() === course.trim() && String(r[facultyCol]).trim() === faculty2.trim());
+
+            if (data1.length === 0 || data2.length === 0) {
+                showStatus('No data found for one or both faculty members', 'error');
+                document.getElementById('comparisonWrapper').style.display = 'none';
+                document.getElementById('emptyComparison').innerHTML = '<div class="auto-note">⚠️ No data found for ' + (data1.length === 0 ? faculty1 : faculty2) + '</div><div class="auto-note">💡 Comparison generates automatically when you select Course & Faculty! No button click needed.</div>';
+                document.getElementById('emptyComparison').style.display = 'block';
+                return;
+            }
+
+            const sections = {};
+            numericCols.forEach(col => {
+                const match = col.match(/^(\d+)/);
+                const sectionNum = match ? match[1] : 'other';
+                if (!sections[sectionNum]) sections[sectionNum] = [];
+                sections[sectionNum].push(col);
+            });
+
+            // Clear previous comparison
+            document.getElementById('comparisonContainer').innerHTML = '';
+
+            Object.keys(sections).sort().forEach(sectionNum => {
+                const sectionCols = sections[sectionNum];
+                const sectionTitle = getSectionName(sectionNum);
+
+                const card = document.createElement('div');
+                card.className = 'insight-card';
+                card.innerHTML = `<h3>${sectionTitle}</h3>`;
+
+                sectionCols.forEach(col => {
+                    const values1 = data1.map(r => parseFloat(r[col]) || 0);
+                    const values2 = data2.map(r => parseFloat(r[col]) || 0);
+                    
+                    const avg1 = calculateScore(values1);
+                    const avg2 = calculateScore(values2);
+                    const diff = (avg1 - avg2).toFixed(2);
+
+                    const label = col.substring(col.indexOf('.') + 1).trim();
+                    card.innerHTML += `
+                        <div class="insight-item">
+                            <div class="insight-title">${label}</div>
+                            <span class="insight-score">${faculty1.split(' ')[1] || faculty1}: ${avg1}</span>
+                            <span class="insight-score">${faculty2.split(' ')[1] || faculty2}: ${avg2}</span>
+                            <div class="insight-text">Difference: ${diff > 0 ? '+' : ''}${diff}</div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('comparisonContainer').appendChild(card);
+            });
+
+            document.getElementById('comparisonWrapper').style.display = 'block';
+            document.getElementById('emptyComparison').style.display = 'none';
+            document.getElementById('downloadCompareBtn').style.display = 'inline-block';
+            showStatus('✓ Comparison generated!', 'success');
+        }
+
+        function downloadComparison() {
+            const element = document.getElementById('comparisonWrapper');
+            const opt = {
+                margin: 10,
+                filename: 'Faculty_Comparison.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+            html2pdf().set(opt).from(element).save();
+            showStatus('✓ Comparison PDF downloaded!', 'success');
+        }
+
+        // STATISTICS TAB
+        // Auto-generate when dropdown changes
+        document.getElementById('statsCourse').addEventListener('change', generateStatistics);
+        
+        document.getElementById('statsBtn').addEventListener('click', generateStatistics);
+        document.getElementById('downloadStatsBtn').addEventListener('click', downloadStatistics);
+
+        function generateStatistics() {
+            if (allData.length === 0) {
+                showStatus('Please upload a file first', 'error');
+                document.getElementById('statsWrapper').style.display = 'none';
+                document.getElementById('emptyStats').style.display = 'block';
+                return;
+            }
+
+            const course = document.getElementById('statsCourse').value;
+
+            if (!course) {
+                document.getElementById('statsWrapper').style.display = 'none';
+                document.getElementById('emptyStats').style.display = 'block';
+                return;
+            }
+
+            const courseCol = getCourseColumn();
+            const facultyCol = getFacultyColumn();
+            const numericCols = getNumericColumns();
+
+            const filtered = allData.filter(r => String(r[courseCol]).trim() === course.trim());
+
+            if (filtered.length === 0) {
+                showStatus('No data found for this course', 'error');
+                document.getElementById('statsWrapper').style.display = 'none';
+                document.getElementById('emptyStats').innerHTML = '<div class="auto-note">⚠️ No data found for ' + course + '</div><div class="auto-note">💡 Statistics generate automatically when you select Course! No button click needed.</div>';
+                document.getElementById('emptyStats').style.display = 'block';
+                return;
+            }
+
+            const faculties = [...new Set(filtered.map(r => r[facultyCol]))];
+
+            let tableHTML = '<tr><th>Faculty Name</th>';
+            numericCols.slice(0, 10).forEach(col => {
+                tableHTML += '<th>' + col.substring(col.indexOf('.') + 1).trim().substring(0, 12) + '</th>';
+            });
+            tableHTML += '<th>Overall</th></tr>';
+
+            faculties.forEach(faculty => {
+                const facultyData = filtered.filter(r => r[facultyCol] === faculty);
+                tableHTML += '<tr><td><strong>' + faculty + '</strong></td>';
+
+                let totalScore = 0;
+                let count = 0;
+
+                numericCols.slice(0, 10).forEach(col => {
+                    const values = facultyData.map(r => parseFloat(r[col]) || 0);
+                    const avg = calculateScore(values);
+                    tableHTML += '<td>' + avg + '</td>';
+                    totalScore += parseFloat(avg);
+                    count++;
+                });
+
+                const overall = (totalScore / count).toFixed(2);
+                tableHTML += '<td><strong>' + overall + '</strong></td>';
+                tableHTML += '</tr>';
+            });
+
+            // Clear and refresh
+            document.getElementById('statsTable').innerHTML = tableHTML;
+            document.getElementById('statsWrapper').style.display = 'block';
+            document.getElementById('emptyStats').style.display = 'none';
+            document.getElementById('downloadStatsBtn').style.display = 'inline-block';
+            showStatus('✓ Statistics generated!', 'success');
+        }
+
+        function downloadStatistics() {
+            const table = document.getElementById('statsTable');
+            let csv = '';
+            table.querySelectorAll('tr').forEach(row => {
+                row.querySelectorAll('th, td').forEach((cell, index) => {
+                    csv += cell.textContent;
+                    if (index < row.querySelectorAll('th, td').length - 1) csv += ',';
+                });
+                csv += '\n';
+            });
+
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = 'Faculty_Statistics.csv';
+            link.click();
+            showStatus('✓ CSV downloaded!', 'success');
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('chartsWrapper');
+            const opt = {
+                margin: 10,
+                filename: 'Faculty_Feedback_Report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+            html2pdf().set(opt).from(element).save();
+            showStatus('✓ PDF downloaded!', 'success');
+        }
+
+        function reset() {
+            allData = [];
+            fileInput.value = '';
+            document.getElementById('courseSelect').value = '';
+            document.getElementById('facultySelect').value = '';
+            document.getElementById('chartsContainer').innerHTML = '';
+            document.getElementById('chartsWrapper').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('downloadPdfBtn').style.display = 'none';
+            fileInfo.classList.remove('show');
+            statusMessage.classList.remove('show');
+            
+            Object.values(chartInstances).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+        }
+    </script>
+</body>
+</html>
