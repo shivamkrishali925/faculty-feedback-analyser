@@ -128,6 +128,14 @@
 
         <div id="ratings" class="tab-content">
             <h2 style="margin-bottom: 20px;">⭐ Detailed Ratings Analysis</h2>
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="control-group">
+                        <label for="ratingsFacultyFilter">Filter by Faculty</label>
+                        <select id="ratingsFacultyFilter" onchange="updateRatingsAnalysis()"><option value="">-- All Faculties --</option></select>
+                    </div>
+                </div>
+            </div>
             <div id="ratingsContent"><div class="alert alert-info">Please upload data first to view ratings analysis.</div></div>
         </div>
 
@@ -189,8 +197,13 @@
 
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    let workbook;
+                    if (file.name.endsWith('.csv')) {
+                        workbook = XLSX.read(e.target.result, { type: 'string' });
+                    } else {
+                        const data = new Uint8Array(e.target.result);
+                        workbook = XLSX.read(data, { type: 'array' });
+                    }
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
@@ -283,11 +296,17 @@
             const facultySelect = document.getElementById('facultySelect');
             const classSelect = document.getElementById('classSelect');
             const comparisonClass = document.getElementById('comparisonClass');
+            const ratingsFacultyFilter = document.getElementById('ratingsFacultyFilter');
             const currentSelectedFaculty = facultySelect.value;
+            const currentRatingsFaculty = ratingsFacultyFilter.value;
 
             facultySelect.innerHTML = '<option value="">-- Select Faculty --</option>';
             Array.from(managedFaculties).sort().forEach(faculty => { facultySelect.innerHTML += `<option value="${faculty}">${faculty}</option>`; });
             if (managedFaculties.has(currentSelectedFaculty)) { facultySelect.value = currentSelectedFaculty; }
+
+            ratingsFacultyFilter.innerHTML = '<option value="">-- All Faculties --</option>';
+            Array.from(managedFaculties).sort().forEach(faculty => { ratingsFacultyFilter.innerHTML += `<option value="${faculty}">${faculty}</option>`; });
+            if (managedFaculties.has(currentRatingsFaculty)) { ratingsFacultyFilter.value = currentRatingsFaculty; }
 
             const classOptions = '<option value="">-- All Classes --</option>' + Array.from(processedData.classes).sort().map(cls => `<option value="${cls}">${cls}</option>`).join('');
             classSelect.innerHTML = classOptions;
@@ -430,14 +449,31 @@
 
         function updateRatingsAnalysis() {
             if (feedbackData.length === 0) return;
-            const stats = calculateStats(feedbackData);
-            
+            const selectedFaculty = document.getElementById('ratingsFacultyFilter').value;
+            const data = selectedFaculty
+                ? feedbackData.filter(row => {
+                    const facultyValue = row[processedData.facultyColumn] ? String(row[processedData.facultyColumn]).trim() : '';
+                    return facultyValue === selectedFaculty;
+                })
+                : feedbackData;
+
+            if (data.length === 0) {
+                document.getElementById('ratingsContent').innerHTML = `<div class="alert alert-warning">No feedback data found for <strong>${selectedFaculty}</strong>.</div>`;
+                return;
+            }
+
+            const stats = calculateStats(data);
+            const heading = selectedFaculty ? `Ratings for ${selectedFaculty}` : 'Institution-wide Question Averages';
+            const totalLabel = selectedFaculty ? 'Faculty Responses' : 'Total College Responses';
+            const avgLabel = selectedFaculty ? 'Faculty Overall Average' : 'College Overall Average';
+
             let html = `
                 <div class="stats-grid">
-                    <div class="stat-card"><h3>Total College Responses</h3><div class="value">${stats.totalResponses}</div></div>
-                    <div class="stat-card"><h3>College Overall Average</h3><div class="value">${stats.overallAverage}/5</div></div>
+                    <div class="stat-card"><h3>${totalLabel}</h3><div class="value">${stats.totalResponses}</div></div>
+                    <div class="stat-card"><h3>${avgLabel}</h3><div class="value">${stats.overallAverage}/5</div></div>
+                    ${selectedFaculty ? `<div class="stat-card"><h3>Performance Rating</h3><div class="value">${getRatingLabel(stats.overallAverage)}</div></div>` : ''}
                 </div>
-                <h3 style="margin: 20px 0 15px 0;">Institution-wide Question Averages</h3>
+                <h3 style="margin: 20px 0 15px 0;">${heading}</h3>
                 <table class="data-table"><thead><tr><th>Q. ID</th><th>Full Question</th><th>Average</th><th>Status</th></tr></thead><tbody>
                     ${Object.entries(stats.averageRatings).map(([question, avg]) => `<tr><td><strong>${getShortQuestionLabel(question)}</strong></td><td>${question}</td><td>${avg}/5</td><td>${getRatingBadge(avg)}</td></tr>`).join('')}
                 </tbody></table>`;
