@@ -385,6 +385,15 @@
             return match ? match[1] : question.substring(0, 12) + '...';
         }
 
+        function getExtremeQuestion(averageRatings, findMax) {
+            const avgs = Object.entries(averageRatings);
+            if (!avgs.length) return null;
+            return avgs.reduce((best, current) => {
+                const cmp = parseFloat(current[1]) - parseFloat(best[1]);
+                return (findMax ? cmp > 0 : cmp < 0) ? current : best;
+            });
+        }
+
         function renderRatingsChart(ratings) {
             const ctx = document.getElementById('ratingsChart');
             if (!ctx) return;
@@ -566,9 +575,8 @@
                     <thead><tr><th>Rank</th><th>Faculty Name</th><th>Responses</th><th>Overall Avg</th><th>Highest Q.</th><th>Lowest Q.</th><th>Performance</th></tr></thead>
                     <tbody>
                         ${facultyStatsList.map(({ faculty, stats }, i) => {
-                            const avgs = Object.entries(stats.averageRatings);
-                            const highest = avgs.length ? avgs.reduce((a, b) => parseFloat(b[1]) > parseFloat(a[1]) ? b : a) : null;
-                            const lowest  = avgs.length ? avgs.reduce((a, b) => parseFloat(b[1]) < parseFloat(a[1]) ? b : a) : null;
+                            const highest = getExtremeQuestion(stats.averageRatings, true);
+                            const lowest  = getExtremeQuestion(stats.averageRatings, false);
                             return `<tr>
                                 <td><strong>#${i + 1}</strong></td>
                                 <td>${faculty}</td>
@@ -628,7 +636,7 @@
                         options: {
                             responsive: true, maintainAspectRatio: true,
                             scales: { y: { beginAtZero: true, max: 5 } },
-                            plugins: { tooltip: { callbacks: { title: function(context) { return fullQuestions[context[0].dataIndex]; } } } }
+                            plugins: { tooltip: { callbacks: { title: (context) => fullQuestions[context[0].dataIndex] } } }
                         }
                     });
                 }
